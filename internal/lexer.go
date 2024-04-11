@@ -2,7 +2,6 @@ package internal
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"os"
 	"regexp"
@@ -26,34 +25,28 @@ const (
 )
 
 type Lexer struct {
-	reNums *regexp.Regexp
-	mem    [STD_MEM]uint8
-	Ops    []int
-	ip     uint16
-	mp     uint16
-	conn   net.Conn
+	mem  [STD_MEM]uint8
+	ip   uint16
+	mp   uint16
+	conn net.Conn
 }
 
 func NewLexer() *Lexer {
 	return &Lexer{
-		reNums: regexp.MustCompile("[0-9]+"),
-		mem:    [STD_MEM]uint8{},
-		Ops:    []int{},
-		ip:     uint16(0),
-		mp:     uint16(0), // starts at first byte after instructions
-		conn:   nil,
+		mem:  [STD_MEM]uint8{},
+		ip:   uint16(0),
+		mp:   uint16(0), // starts at first byte after instructions
+		conn: nil,
 	}
 }
 
 func (l *Lexer) Lex(code string) {
 	space := regexp.MustCompile(`\s+`)
 	code = space.ReplaceAllString(code, " ")
-	fmt.Println(code)
 	var op uint8 = 0
 	l.ip = 0
 	for i := 0; i < len(code); i++ {
 		opcode := code[i] - 48 // int('0') === 48
-		fmt.Println("char", code[i], "opcode", opcode)
 		if opcode < 10 {
 			op += opcode
 		}
@@ -66,13 +59,10 @@ func (l *Lexer) Lex(code string) {
 	}
 	l.mp = l.ip + 1
 	l.ip = 0
-
-	//words := strings.Fields(code)
-	//fmt.Println("words:", words, "len:", len(words))
-	//words_nums := l.reNums.FindAllString(words[0], -1)
 }
 
 func (l *Lexer) Exec() {
+	stdout := bufio.NewWriter(os.Stdout)
 	stdin := bufio.NewReader(os.Stdin)
 	var isRunning bool = true
 	var currOP uint8 = l.mem[l.ip]
@@ -84,7 +74,8 @@ func (l *Lexer) Exec() {
 		case OP_WRT:
 			l.ip++
 			if l.conn == nil {
-				fmt.Print(string(l.mem[l.mp]))
+				_ = stdout.WriteByte(l.mem[l.mp]) // NOTE: no need to report golang errors
+				_ = stdout.Flush()
 				continue
 			}
 			_, _ = l.conn.Write([]byte{l.mem[l.mp]}) // NOTE: no need to report golang errors
@@ -161,7 +152,8 @@ func (l *Lexer) Exec() {
 				}
 			}
 			if err != nil {
-				fmt.Print("\n\nh0s7 5uXz0r5! c4N'7 c0Nn3<7 l0l0l0l0l l4m3R !!!\n\n")
+				_, _ = stdout.WriteString("\n\nh0s7 5uXz0r5! c4N'7 c0Nn3<7 l0l0l0l0l l4m3R !!!\n\n")
+				_ = stdout.Flush() // NOTE: no need to report golang errors
 				continue
 			}
 			l.conn = c
@@ -170,9 +162,11 @@ func (l *Lexer) Exec() {
 			if l.conn != nil {
 				_ = l.conn.Close()
 			}
-			fmt.Println()
+			_ = stdout.WriteByte('\n')
+			_ = stdout.Flush()
 		default:
-			fmt.Print("\n\nj00 4r3 teh 5ux0r\n\n")
+			_, _ = stdout.WriteString("\n\nj00 4r3 teh 5ux0r\n\n") // NOTE: no need to report golang errors
+			_ = stdout.Flush()
 		}
 	}
 }
