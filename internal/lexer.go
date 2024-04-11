@@ -74,8 +74,9 @@ func (l *Lexer) Lex(code string) {
 
 func (l *Lexer) Exec() {
 	stdin := bufio.NewReader(os.Stdin)
+	var isRunning bool = true
 	var currOP uint8 = l.mem[l.ip]
-	for currOP != OP_END {
+	for isRunning {
 		currOP = l.mem[l.ip]
 		switch currOP {
 		case OP_NOP:
@@ -164,12 +165,15 @@ func (l *Lexer) Exec() {
 				continue
 			}
 			l.conn = c
+		case OP_END:
+			isRunning = false
+			if l.conn != nil {
+				_ = l.conn.Close()
+			}
+			fmt.Println()
 		default:
 			fmt.Print("\n\nj00 4r3 teh 5ux0r\n\n")
 		}
-	}
-	if l.conn != nil {
-		_ = l.conn.Close()
 	}
 }
 
